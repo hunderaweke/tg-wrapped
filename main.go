@@ -16,13 +16,19 @@ import (
 )
 
 type analytics struct {
-	TotalViews int
+	TotalViews  int
+	MonthlyView map[string]int
 }
 
+func getMonth(date int) string {
+	t := time.Unix(int64(date), 0)
+	return t.Month().String()
+}
 func main() {
 	var appHash string
 	var appID int
 	var a analytics
+	a.MonthlyView = make(map[string]int)
 	appHash = os.Getenv("APP_HASH")
 	appID, err := strconv.Atoi(os.Getenv("APP_ID"))
 	if err != nil {
@@ -81,12 +87,14 @@ func main() {
 					if mm, ok := msg.(*tg.Message); ok {
 						offSet = mm.Date
 						a.TotalViews += mm.Views
+						a.MonthlyView[getMonth(mm.Date)] += mm.Views
 					}
 				}
 			case *tg.MessagesMessages:
 				for _, msg := range m.Messages {
 					if mm, ok := msg.(*tg.Message); ok {
 						offSet = mm.Date
+						a.MonthlyView[getMonth(mm.Date)] += mm.Views
 						a.TotalViews += mm.Views
 					}
 				}
@@ -95,6 +103,7 @@ func main() {
 					if mm, ok := msg.(*tg.Message); ok {
 						offSet = mm.Date
 						a.TotalViews += mm.Views
+						a.MonthlyView[getMonth(mm.Date)] += mm.Views
 					}
 				}
 			default:
@@ -108,4 +117,5 @@ func main() {
 	}
 	fmt.Println("--- Total Views ---")
 	fmt.Println(a.TotalViews)
+	fmt.Println(a.MonthlyView)
 }
