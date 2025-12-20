@@ -15,9 +15,14 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
+type analytics struct {
+	TotalViews int
+}
+
 func main() {
 	var appHash string
 	var appID int
+	var a analytics
 	appHash = os.Getenv("APP_HASH")
 	appID, err := strconv.Atoi(os.Getenv("APP_ID"))
 	if err != nil {
@@ -27,7 +32,6 @@ func main() {
 	client := telegram.NewClient(appID, appHash, telegram.Options{
 		SessionStorage: &telegram.FileSessionStorage{Path: "user_session.json"},
 	})
-
 	if err := client.Run(context.Background(), func(ctx context.Context) error {
 		authenticator := termAuth{reader: bufio.NewReader(os.Stdin)}
 		if err := client.Auth().IfNecessary(ctx, auth.NewFlow(authenticator, auth.SendCodeOptions{})); err != nil {
@@ -71,33 +75,26 @@ func main() {
 			if err != nil {
 				return fmt.Errorf("history: %w. If you see BOT_METHOD_INVALID, delete old bot session and re-auth as a user (remove user_session.json)", err)
 			}
-			fmt.Println("--- Recent Messages ---")
 			switch m := res.(type) {
 			case *tg.MessagesChannelMessages:
 				for _, msg := range m.Messages {
 					if mm, ok := msg.(*tg.Message); ok {
-						fmt.Printf("[%d] Views: %d Replies: %v ", mm.ID, mm.Views, mm.Replies.Replies)
-						t := time.Unix(int64(mm.Date), 0).UTC().Format(time.RFC3339)
-						fmt.Printf("Date: %s\n", t)
 						offSet = mm.Date
+						a.TotalViews += mm.Views
 					}
 				}
 			case *tg.MessagesMessages:
 				for _, msg := range m.Messages {
 					if mm, ok := msg.(*tg.Message); ok {
-						fmt.Printf("[%d] Views: %d Replies: %v\n", mm.ID, mm.Views, mm.Replies.Replies)
-						t := time.Unix(int64(mm.Date), 0).UTC().Format(time.RFC3339)
-						fmt.Printf("Date: %s\n", t)
 						offSet = mm.Date
+						a.TotalViews += mm.Views
 					}
 				}
 			case *tg.MessagesMessagesSlice:
 				for _, msg := range m.Messages {
 					if mm, ok := msg.(*tg.Message); ok {
-						fmt.Printf("[%d] Views: %d Replies: %v\n", mm.ID, mm.Views, mm.Replies.Replies)
-						t := time.Unix(int64(mm.Date), 0).UTC().Format(time.RFC3339)
-						fmt.Printf("Date: %s\n", t)
 						offSet = mm.Date
+						a.TotalViews += mm.Views
 					}
 				}
 			default:
@@ -109,4 +106,6 @@ func main() {
 	}); err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("--- Total Views ---")
+	fmt.Println(a.TotalViews)
 }
