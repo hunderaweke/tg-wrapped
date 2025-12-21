@@ -16,16 +16,18 @@ import (
 )
 
 type analytics struct {
-	TotalViews           int
-	TotalComments        int
-	TotalReactions       int
-	TotalPosts           int
-	MonthlyView          map[string]int
-	ReactionCounter      map[string]int
-	PostCountPerday      map[string][]int
-	PostCountPerMonth    map[string]int
-	PopularPostID        int
-	PopularPostViewCount int
+	TotalViews              int
+	TotalComments           int
+	TotalReactions          int
+	TotalPosts              int
+	MonthlyView             map[string]int
+	ReactionCounter         map[string]int
+	PostCountPerday         map[string][]int
+	PostCountPerMonth       map[string]int
+	PopularPostID           int
+	PopularPostViewCount    int
+	PopularPostByCommentID  int
+	PopularPostCommentCount int
 }
 
 func getDateTime(date int) time.Time {
@@ -105,7 +107,6 @@ func main() {
 		if !ok {
 			return fmt.Errorf("peer is not a channel")
 		}
-
 		fmt.Printf("Channel: %s\n", channel.Title)
 		startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 		minDateUnix := int(startDate.Unix())
@@ -131,6 +132,10 @@ func main() {
 						a.PopularPostID = mm.ID
 						a.PopularPostViewCount = mm.Views
 					}
+					if a.PopularPostByCommentID == 0 || a.PopularPostCommentCount < mm.Replies.Replies {
+						a.PopularPostByCommentID = mm.ID
+						a.PopularPostCommentCount = mm.Replies.Replies
+					}
 					offSet = mm.Date
 					a.TotalViews += mm.Views
 					a.TotalComments += mm.Replies.Replies
@@ -153,6 +158,6 @@ func main() {
 	fmt.Printf("Total View: %d\n", a.TotalViews)
 	fmt.Printf("Total Comments: %d\n", a.TotalComments)
 	fmt.Printf("Total Reactions: %d\n", a.TotalReactions)
-	fmt.Println("Posts Per day: ", a.PostCountPerday)
-	fmt.Println(a.PopularPostViewCount)
+	// fmt.Println("Posts Per day: ", a.PostCountPerday)
+	fmt.Printf("Max number of comments per post: %d\n", a.PopularPostCommentCount)
 }
