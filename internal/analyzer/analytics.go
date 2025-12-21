@@ -6,7 +6,7 @@ import (
 	"github.com/gotd/td/tg"
 )
 
-type analytics struct {
+type Analytics struct {
 	TotalViews              int              `json:"total_views,omitempty"`
 	TotalComments           int              `json:"total_comments,omitempty"`
 	TotalReactions          int              `json:"total_reactions,omitempty"`
@@ -50,8 +50,8 @@ func mergeMaps(firstMap, secondMap map[string]int) map[string]int {
 	}
 	return firstMap
 }
-func NewAnalytics() analytics {
-	var a analytics
+func NewAnalytics() Analytics {
+	var a Analytics
 	a.MonthlyView = make(map[string]int)
 	a.ReactionCounter = make(map[string]int)
 	a.PostCountPerday = make(map[string][]int)
@@ -59,7 +59,7 @@ func NewAnalytics() analytics {
 	a.ForwardCount = make(map[int]int)
 	return a
 }
-func (a *analytics) addDateCount(date time.Time) {
+func (a *Analytics) addDateCount(date time.Time) {
 	month := date.Month().String()
 	t := time.Date(date.Year(), date.Month()+1, 1, 0, 0, 0, 0, time.UTC)
 	lastDay := t.AddDate(0, 0, -1)
