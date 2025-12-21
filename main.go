@@ -16,17 +16,19 @@ import (
 )
 
 type analytics struct {
-	TotalViews      int
-	MonthlyView     map[string]int
-	TotalComments   int
-	TotalReactions  int
-	ReactionCounter map[string]int
-	CountPerday     map[string][]int
+	TotalViews        int
+	TotalComments     int
+	TotalReactions    int
+	TotalPosts        int
+	MonthlyView       map[string]int
+	ReactionCounter   map[string]int
+	PostCountPerday   map[string][]int
+	PostCountPerMonth map[string]int
 }
 
-func getMonth(date int) string {
+func getDateTime(date int) time.Time {
 	t := time.Unix(int64(date), 0)
-	return t.Month().String()
+	return t
 }
 func countNumOfReactions(reactions tg.MessageReactions) (map[string]int, int) {
 	counter := make(map[string]int)
@@ -54,7 +56,8 @@ func NewAnalytics() analytics {
 	var a analytics
 	a.MonthlyView = make(map[string]int)
 	a.ReactionCounter = make(map[string]int)
-	a.CountPerday = make(map[string][]int)
+	a.PostCountPerday = make(map[string][]int)
+	a.PostCountPerMonth = make(map[string]int)
 	return a
 }
 func main() {
@@ -116,10 +119,13 @@ func main() {
 					offSet = mm.Date
 					a.TotalViews += mm.Views
 					a.TotalComments += mm.Replies.Replies
-					a.MonthlyView[getMonth(mm.Date)] += mm.Views
+					t := getDateTime(mm.Date)
+					a.MonthlyView[t.Month().String()] += mm.Views
 					reactionCounter, totalReactions := (countNumOfReactions(mm.Reactions))
 					a.ReactionCounter = mergeMaps(a.ReactionCounter, reactionCounter)
 					a.TotalReactions += totalReactions
+					a.PostCountPerday[t.Month().String()][t.Day()] += 1
+					a.PostCountPerMonth[t.Month().String()] += 1
 				}
 			}
 		}
@@ -133,5 +139,5 @@ func main() {
 	// fmt.Println(a.MonthlyView)
 	fmt.Printf("Total Comments: %d\n", a.TotalComments)
 	fmt.Printf("Total Reactions: %d\n", a.TotalReactions)
-	fmt.Println(a.ReactionCounter)
+	fmt.Println("Posts Per day: ", a.PostCountPerday)
 }
