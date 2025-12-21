@@ -7,6 +7,7 @@ import (
 )
 
 type Analytics struct {
+	ChannelName             string           `json:"channel_name,omitempty"`
 	TotalViews              int              `json:"total_views,omitempty"`
 	TotalComments           int              `json:"total_comments,omitempty"`
 	TotalReactions          int              `json:"total_reactions,omitempty"`
@@ -23,8 +24,9 @@ type Analytics struct {
 	ForwardCount            map[int]int      `json:"forward_count,omitempty"`
 }
 
-func NewAnalytics() Analytics {
+func NewAnalytics(name string) Analytics {
 	var a Analytics
+	a.ChannelName = name
 	a.MonthlyView = make(map[string]int)
 	a.ReactionCounter = make(map[string]int)
 	a.PostCountPerday = make(map[string][]int)

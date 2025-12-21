@@ -27,7 +27,7 @@ go.work.sum
 # env file
 .env
 user_session.json
-
+parsed.json
 # Editor/IDE
 # .idea/
 # .vscode/

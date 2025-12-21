@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gotd/contrib/bg"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth"
 	"github.com/gotd/td/tg"
@@ -37,28 +36,6 @@ func NewAnalyzer() Analyzer {
 	return Analyzer{client: client, authenticator: authenticator}
 }
 
-func (ar *Analyzer) Run() error {
-	stop, err := bg.Connect(ar.client)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = stop() }()
-	a, err := ar.ProcessAnalytics("codative")
-	if err != nil {
-		return err
-	}
-	fmt.Println("--- Total Views ---")
-	fmt.Printf("Total View: %d\n", a.TotalViews)
-	fmt.Printf("Total Comments: %d\n", a.TotalComments)
-	fmt.Printf("Total Reactions: %d\n", a.TotalReactions)
-	fmt.Printf("Max number of comments per post: %d\n", a.PopularPostCommentCount)
-	fmt.Println("Total Forwarded Messages: ", a.TotalForwarded)
-	if _, err := ar.client.Auth().Status(context.Background()); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (a *Analyzer) GetChannel(username string) (*tg.Channel, error) {
 	var c *tg.Channel
 	err := a.client.Auth().IfNecessary(context.Background(), auth.NewFlow(a.authenticator, auth.SendCodeOptions{}))
@@ -83,36 +60,39 @@ func (a *Analyzer) GetChannel(username string) (*tg.Channel, error) {
 }
 
 func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
-	channel, err := ar.GetChannel(username)
-	if err != nil {
+	var a Analytics
+	if err := ar.client.Run(context.Background(), func(ctx context.Context) error {
+		channel, err := ar.GetChannel(username)
+		a = NewAnalytics(channel.Title)
+		if err != nil {
+			return err
+		}
+		api := ar.client.API()
+		startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+		minDateUnix := int(startDate.Unix())
+		currentDate := int(time.Now().Unix())
+		offsetID := 0
+		offSet := currentDate
+		limit := 100
+		for offSet >= minDateUnix {
+			peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
+			res, err := api.MessagesGetHistory(context.Background(), &tg.MessagesGetHistoryRequest{
+				Peer:       peer,
+				OffsetDate: offSet,
+				OffsetID:   offsetID,
+				Limit:      limit,
+			})
+			if err != nil {
+				return fmt.Errorf("history: %w. If you see BOT_METHOD_INVALID, delete old bot session and re-auth as a user (remove user_session.json)", err)
+			}
+			m, _ := res.(*tg.MessagesChannelMessages)
+			offSet = a.updateFromChannelMessages(m)
+			// *Important: need to deal with the rate limiter
+			time.Sleep(3 * time.Second)
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	a := NewAnalytics()
-	api := ar.client.API()
-	startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	minDateUnix := int(startDate.Unix())
-	currentDate := int(time.Now().Unix())
-	offsetID := 0
-	offSet := currentDate
-	limit := 100
-	current := 1
-	for offSet >= minDateUnix {
-		peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
-		res, err := api.MessagesGetHistory(context.Background(), &tg.MessagesGetHistoryRequest{
-			Peer:       peer,
-			OffsetDate: offSet,
-			OffsetID:   offsetID,
-			Limit:      limit,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("history: %w. If you see BOT_METHOD_INVALID, delete old bot session and re-auth as a user (remove user_session.json)", err)
-		}
-		m, _ := res.(*tg.MessagesChannelMessages)
-		offSet = a.updateFromChannelMessages(m)
-		fmt.Printf("Current Loop: %d\n", current)
-		current += 1
-		// *Important: need to deal with the rate limiter
-		// time.Sleep(5 * time.Second)
-	}
-	return &a, err
+	return &a, nil
 }
