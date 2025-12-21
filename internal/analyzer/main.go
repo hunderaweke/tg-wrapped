@@ -1,4 +1,4 @@
-package main
+package analyzer
 
 import (
 	"bufio"
@@ -12,6 +12,7 @@ import (
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth"
 	"github.com/gotd/td/tg"
+	localAuth "github.com/hunderaweke/tg-unwrapped/internal/auth"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -29,7 +30,7 @@ func main() {
 		SessionStorage: &telegram.FileSessionStorage{Path: "user_session.json"},
 	})
 	if err := client.Run(context.Background(), func(ctx context.Context) error {
-		authenticator := termAuth{reader: bufio.NewReader(os.Stdin)}
+		authenticator := localAuth.NewTermAuth(bufio.NewReader(os.Stdin))
 		if err := client.Auth().IfNecessary(ctx, auth.NewFlow(authenticator, auth.SendCodeOptions{})); err != nil {
 			return fmt.Errorf("auth: %w", err)
 		}
