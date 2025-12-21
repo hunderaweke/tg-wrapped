@@ -16,14 +16,16 @@ import (
 )
 
 type analytics struct {
-	TotalViews        int
-	TotalComments     int
-	TotalReactions    int
-	TotalPosts        int
-	MonthlyView       map[string]int
-	ReactionCounter   map[string]int
-	PostCountPerday   map[string][]int
-	PostCountPerMonth map[string]int
+	TotalViews           int
+	TotalComments        int
+	TotalReactions       int
+	TotalPosts           int
+	MonthlyView          map[string]int
+	ReactionCounter      map[string]int
+	PostCountPerday      map[string][]int
+	PostCountPerMonth    map[string]int
+	PopularPostID        int
+	PopularPostViewCount int
 }
 
 func getDateTime(date int) time.Time {
@@ -125,6 +127,10 @@ func main() {
 			m, _ := res.(*tg.MessagesChannelMessages)
 			for _, msg := range m.Messages {
 				if mm, ok := msg.(*tg.Message); ok {
+					if a.PopularPostID == 0 || a.PopularPostViewCount < mm.Views {
+						a.PopularPostID = mm.ID
+						a.PopularPostViewCount = mm.Views
+					}
 					offSet = mm.Date
 					a.TotalViews += mm.Views
 					a.TotalComments += mm.Replies.Replies
@@ -145,8 +151,8 @@ func main() {
 	}
 	fmt.Println("--- Total Views ---")
 	fmt.Printf("Total View: %d\n", a.TotalViews)
-	// fmt.Println(a.MonthlyView)
 	fmt.Printf("Total Comments: %d\n", a.TotalComments)
 	fmt.Printf("Total Reactions: %d\n", a.TotalReactions)
 	fmt.Println("Posts Per day: ", a.PostCountPerday)
+	fmt.Println(a.PopularPostViewCount)
 }
