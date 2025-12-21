@@ -2,6 +2,8 @@ package analyzer
 
 import (
 	"time"
+
+	"github.com/gotd/td/tg"
 )
 
 type Analytics struct {
@@ -38,4 +40,36 @@ func (a *Analytics) addDateCount(date time.Time) {
 		a.PostCountPerday[month] = make([]int, lastDay.Day())
 	}
 	a.PostCountPerday[month][date.Day()-1] += 1
+}
+func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int {
+	offSet := 0
+	for _, msg := range m.Messages {
+		if mm, ok := msg.(*tg.Message); ok {
+			if a.PopularPostID == 0 || a.PopularPostViewCount < mm.Views {
+				a.PopularPostID = mm.ID
+				a.PopularPostViewCount = mm.Views
+			}
+			if a.PopularPostByCommentID == 0 || a.PopularPostCommentCount < mm.Replies.Replies {
+				a.PopularPostByCommentID = mm.ID
+				a.PopularPostCommentCount = mm.Replies.Replies
+			}
+			offSet = mm.Date
+			a.TotalViews += mm.Views
+			a.TotalComments += mm.Replies.Replies
+			t := getDateTime(mm.Date)
+			a.MonthlyView[t.Month().String()] += mm.Views
+			reactionCounter, totalReactions := (countNumOfReactions(mm.Reactions))
+			a.ReactionCounter = mergeMaps(a.ReactionCounter, reactionCounter)
+			a.TotalReactions += totalReactions
+			a.PostCountPerMonth[t.Month().String()] += 1
+			a.addDateCount(t)
+			if fromID, ok := mm.FwdFrom.GetFromID(); ok {
+				if ch, ok := fromID.(*tg.PeerChannel); ok {
+					a.ForwardCount[int(ch.ChannelID)] += 1
+				}
+				a.TotalForwarded += 1
+			}
+		}
+	}
+	return offSet
 }
