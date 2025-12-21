@@ -21,6 +21,7 @@ type analytics struct {
 	TotalComments   int
 	TotalReactions  int
 	ReactionCounter map[string]int
+	CountPerday     map[string][]int
 }
 
 func getMonth(date int) string {
@@ -29,7 +30,7 @@ func getMonth(date int) string {
 }
 func countNumOfReactions(reactions tg.MessageReactions) (map[string]int, int) {
 	counter := make(map[string]int)
-	// NOTE: I am counting the custom reactions too
+	// * Important: I am counting the custom reactions too
 	totalCount := 0
 	for _, r := range reactions.Results {
 		totalCount += r.Count
@@ -49,12 +50,17 @@ func mergeMaps(firstMap, secondMap map[string]int) map[string]int {
 	}
 	return firstMap
 }
-func main() {
-	var appHash string
-	var appID int
+func NewAnalytics() analytics {
 	var a analytics
 	a.MonthlyView = make(map[string]int)
 	a.ReactionCounter = make(map[string]int)
+	a.CountPerday = make(map[string][]int)
+	return a
+}
+func main() {
+	var appHash string
+	var appID int
+	a := NewAnalytics()
 	appHash = os.Getenv("APP_HASH")
 	appID, err := strconv.Atoi(os.Getenv("APP_ID"))
 	if err != nil {
