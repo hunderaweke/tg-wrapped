@@ -27,25 +27,34 @@ func getMonth(date int) string {
 	t := time.Unix(int64(date), 0)
 	return t.Month().String()
 }
-func countNumOfReactions(reactions tg.MessageReactions) map[string]int {
+func countNumOfReactions(reactions tg.MessageReactions) (map[string]int, int) {
 	counter := make(map[string]int)
+	// NOTE: I am counting the custom reactions too
+	totalCount := 0
 	for _, r := range reactions.Results {
+		totalCount += r.Count
 		switch r.Reaction.(type) {
 		case *tg.ReactionEmoji:
 			emojiReaction := r.Reaction.(*tg.ReactionEmoji)
-			fmt.Println(emojiReaction.Emoticon)
 			counter[emojiReaction.Emoticon] += r.Count
 		default:
 			continue
 		}
 	}
-	return counter
+	return counter, totalCount
+}
+func mergeMaps(firstMap, secondMap map[string]int) map[string]int {
+	for key, val := range secondMap {
+		firstMap[key] += val
+	}
+	return firstMap
 }
 func main() {
 	var appHash string
 	var appID int
 	var a analytics
 	a.MonthlyView = make(map[string]int)
+	a.ReactionCounter = make(map[string]int)
 	appHash = os.Getenv("APP_HASH")
 	appID, err := strconv.Atoi(os.Getenv("APP_ID"))
 	if err != nil {
@@ -60,9 +69,6 @@ func main() {
 		if err := client.Auth().IfNecessary(ctx, auth.NewFlow(authenticator, auth.SendCodeOptions{})); err != nil {
 			return fmt.Errorf("auth: %w", err)
 		}
-
-		fmt.Println("--- Authenticated Successfully ---")
-
 		api := client.API()
 		resolved, err := api.ContactsResolveUsername(ctx, &tg.ContactsResolveUsernameRequest{
 			Username: channelUsername,
@@ -81,12 +87,12 @@ func main() {
 		}
 
 		fmt.Printf("Channel: %s\n", channel.Title)
-		startDate := time.Date(2025, time.December, 1, 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 		minDateUnix := int(startDate.Unix())
 		currentDate := int(time.Now().Unix())
 		offsetID := 0
 		offSet := currentDate
-		limit := 10
+		limit := 100
 		for offSet >= minDateUnix {
 			peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
 			res, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{
@@ -105,7 +111,9 @@ func main() {
 					a.TotalViews += mm.Views
 					a.TotalComments += mm.Replies.Replies
 					a.MonthlyView[getMonth(mm.Date)] += mm.Views
-					fmt.Println(countNumOfReactions(mm.Reactions))
+					reactionCounter, totalReactions := (countNumOfReactions(mm.Reactions))
+					a.ReactionCounter = mergeMaps(a.ReactionCounter, reactionCounter)
+					a.TotalReactions += totalReactions
 				}
 			}
 		}
@@ -115,7 +123,9 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("--- Total Views ---")
-	fmt.Println(a.TotalViews)
-	fmt.Println(a.MonthlyView)
-	fmt.Println(a.TotalComments)
+	fmt.Printf("Total View: %d\n", a.TotalViews)
+	// fmt.Println(a.MonthlyView)
+	fmt.Printf("Total Comments: %d\n", a.TotalComments)
+	fmt.Printf("Total Reactions: %d\n", a.TotalReactions)
+	fmt.Println(a.ReactionCounter)
 }
