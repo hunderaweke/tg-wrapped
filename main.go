@@ -16,13 +16,30 @@ import (
 )
 
 type analytics struct {
-	TotalViews  int
-	MonthlyView map[string]int
+	TotalViews      int
+	MonthlyView     map[string]int
+	TotalComments   int
+	TotalReactions  int
+	ReactionCounter map[string]int
 }
 
 func getMonth(date int) string {
 	t := time.Unix(int64(date), 0)
 	return t.Month().String()
+}
+func countNumOfReactions(reactions tg.MessageReactions) map[string]int {
+	counter := make(map[string]int)
+	for _, r := range reactions.Results {
+		switch r.Reaction.(type) {
+		case *tg.ReactionEmoji:
+			emojiReaction := r.Reaction.(*tg.ReactionEmoji)
+			fmt.Println(emojiReaction.Emoticon)
+			counter[emojiReaction.Emoticon] += r.Count
+		default:
+			continue
+		}
+	}
+	return counter
 }
 func main() {
 	var appHash string
@@ -34,7 +51,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	channelUsername := "codative"
+	channelUsername := "Robi_makes_stuff"
 	client := telegram.NewClient(appID, appHash, telegram.Options{
 		SessionStorage: &telegram.FileSessionStorage{Path: "user_session.json"},
 	})
@@ -64,12 +81,12 @@ func main() {
 		}
 
 		fmt.Printf("Channel: %s\n", channel.Title)
-		startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(2025, time.December, 1, 0, 0, 0, 0, time.UTC)
 		minDateUnix := int(startDate.Unix())
 		currentDate := int(time.Now().Unix())
 		offsetID := 0
 		offSet := currentDate
-		limit := 100
+		limit := 10
 		for offSet >= minDateUnix {
 			peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
 			res, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{
@@ -81,33 +98,15 @@ func main() {
 			if err != nil {
 				return fmt.Errorf("history: %w. If you see BOT_METHOD_INVALID, delete old bot session and re-auth as a user (remove user_session.json)", err)
 			}
-			switch m := res.(type) {
-			case *tg.MessagesChannelMessages:
-				for _, msg := range m.Messages {
-					if mm, ok := msg.(*tg.Message); ok {
-						offSet = mm.Date
-						a.TotalViews += mm.Views
-						a.MonthlyView[getMonth(mm.Date)] += mm.Views
-					}
+			m, _ := res.(*tg.MessagesChannelMessages)
+			for _, msg := range m.Messages {
+				if mm, ok := msg.(*tg.Message); ok {
+					offSet = mm.Date
+					a.TotalViews += mm.Views
+					a.TotalComments += mm.Replies.Replies
+					a.MonthlyView[getMonth(mm.Date)] += mm.Views
+					fmt.Println(countNumOfReactions(mm.Reactions))
 				}
-			case *tg.MessagesMessages:
-				for _, msg := range m.Messages {
-					if mm, ok := msg.(*tg.Message); ok {
-						offSet = mm.Date
-						a.MonthlyView[getMonth(mm.Date)] += mm.Views
-						a.TotalViews += mm.Views
-					}
-				}
-			case *tg.MessagesMessagesSlice:
-				for _, msg := range m.Messages {
-					if mm, ok := msg.(*tg.Message); ok {
-						offSet = mm.Date
-						a.TotalViews += mm.Views
-						a.MonthlyView[getMonth(mm.Date)] += mm.Views
-					}
-				}
-			default:
-				fmt.Printf("unexpected history type: %T\n", res)
 			}
 		}
 
@@ -118,4 +117,5 @@ func main() {
 	fmt.Println("--- Total Views ---")
 	fmt.Println(a.TotalViews)
 	fmt.Println(a.MonthlyView)
+	fmt.Println(a.TotalComments)
 }
