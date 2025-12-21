@@ -7,24 +7,27 @@ import (
 )
 
 type analytics struct {
-	TotalViews              int
-	TotalComments           int
-	TotalReactions          int
-	TotalPosts              int
-	MonthlyView             map[string]int
-	ReactionCounter         map[string]int
-	PostCountPerday         map[string][]int
-	PostCountPerMonth       map[string]int
-	PopularPostID           int
-	PopularPostViewCount    int
-	PopularPostByCommentID  int
-	PopularPostCommentCount int
+	TotalViews              int              `json:"total_views,omitempty"`
+	TotalComments           int              `json:"total_comments,omitempty"`
+	TotalReactions          int              `json:"total_reactions,omitempty"`
+	TotalPosts              int              `json:"total_posts,omitempty"`
+	TotalForwarded          int              `json:"total_forwarded,omitempty"`
+	MonthlyView             map[string]int   `json:"monthly_view,omitempty"`
+	ReactionCounter         map[string]int   `json:"reaction_counter,omitempty"`
+	PostCountPerday         map[string][]int `json:"post_count_perday,omitempty"`
+	PostCountPerMonth       map[string]int   `json:"post_count_per_month,omitempty"`
+	PopularPostID           int              `json:"popular_post_id,omitempty"`
+	PopularPostViewCount    int              `json:"popular_post_view_count,omitempty"`
+	PopularPostByCommentID  int              `json:"popular_post_by_comment_id,omitempty"`
+	PopularPostCommentCount int              `json:"popular_post_comment_count,omitempty"`
+	ForwardCount            map[int]int      `json:"forward_count,omitempty"`
 }
 
 func getDateTime(date int) time.Time {
 	t := time.Unix(int64(date), 0)
 	return t
 }
+
 func countNumOfReactions(reactions tg.MessageReactions) (map[string]int, int) {
 	counter := make(map[string]int)
 	// * Important: I am counting the custom reactions too
@@ -53,6 +56,7 @@ func NewAnalytics() analytics {
 	a.ReactionCounter = make(map[string]int)
 	a.PostCountPerday = make(map[string][]int)
 	a.PostCountPerMonth = make(map[string]int)
+	a.ForwardCount = make(map[int]int)
 	return a
 }
 func (a *analytics) addDateCount(date time.Time) {

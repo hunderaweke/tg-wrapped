@@ -15,7 +15,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-
 func main() {
 	var appHash string
 	var appID int
@@ -57,6 +56,7 @@ func main() {
 		offsetID := 0
 		offSet := currentDate
 		limit := 100
+		current := 1
 		for offSet >= minDateUnix {
 			peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
 			res, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{
@@ -89,8 +89,18 @@ func main() {
 					a.TotalReactions += totalReactions
 					a.PostCountPerMonth[t.Month().String()] += 1
 					a.addDateCount(t)
+					if fromID, ok := mm.FwdFrom.GetFromID(); ok {
+						if ch, ok := fromID.(*tg.PeerChannel); ok {
+							log.Printf("Forwarded: %d, Name: %s", ch.ChannelID, mm.FwdFrom.FromName)
+							a.ForwardCount[int(ch.ChannelID)] += 1
+						}
+						a.TotalForwarded += 1
+					}
 				}
 			}
+			fmt.Printf("Current Loop: %d\n", current)
+			current += 1
+			time.Sleep(5 * time.Second)
 		}
 
 		return nil
@@ -103,4 +113,5 @@ func main() {
 	fmt.Printf("Total Reactions: %d\n", a.TotalReactions)
 	// fmt.Println("Posts Per day: ", a.PostCountPerday)
 	fmt.Printf("Max number of comments per post: %d\n", a.PopularPostCommentCount)
+	fmt.Println("Total Forwarded Messages: ", a.TotalForwarded)
 }
