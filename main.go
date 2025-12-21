@@ -60,6 +60,15 @@ func NewAnalytics() analytics {
 	a.PostCountPerMonth = make(map[string]int)
 	return a
 }
+func (a *analytics) addDateCount(date time.Time) {
+	month := date.Month().String()
+	t := time.Date(date.Year(), date.Month()+1, 1, 0, 0, 0, 0, time.UTC)
+	lastDay := t.AddDate(0, 0, -1)
+	if len(a.PostCountPerday[month]) == 0 {
+		a.PostCountPerday[month] = make([]int, lastDay.Day())
+	}
+	a.PostCountPerday[month][date.Day()-1] += 1
+}
 func main() {
 	var appHash string
 	var appID int
@@ -124,8 +133,8 @@ func main() {
 					reactionCounter, totalReactions := (countNumOfReactions(mm.Reactions))
 					a.ReactionCounter = mergeMaps(a.ReactionCounter, reactionCounter)
 					a.TotalReactions += totalReactions
-					a.PostCountPerday[t.Month().String()][t.Day()] += 1
 					a.PostCountPerMonth[t.Month().String()] += 1
+					a.addDateCount(t)
 				}
 			}
 		}
