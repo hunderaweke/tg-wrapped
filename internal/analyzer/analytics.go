@@ -21,6 +21,7 @@ type Analytics struct {
 	PopularPostViewCount    int              `json:"popular_post_view_count,omitempty"`
 	PopularPostByCommentID  int              `json:"popular_post_by_comment_id,omitempty"`
 	PopularPostCommentCount int              `json:"popular_post_comment_count,omitempty"`
+	PostsPerHour            map[int]int      `json:"posts_per_hour,omitempty"`
 	ForwardCount            map[int]int      `json:"forward_count,omitempty"`
 	LongestStreak           int              `json:"longest_streak,omitempty"`
 	visited                 map[int]struct{}
@@ -35,6 +36,7 @@ func NewAnalytics(name string) Analytics {
 	a.PostCountPerMonth = make(map[string]int)
 	a.ForwardCount = make(map[int]int)
 	a.visited = make(map[int]struct{})
+	a.PostsPerHour = make(map[int]int)
 	return a
 }
 func (a *Analytics) addDateCount(date time.Time) {
@@ -71,6 +73,7 @@ func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int
 			a.ReactionCounter = mergeMaps(a.ReactionCounter, reactionCounter)
 			a.TotalReactions += totalReactions
 			a.PostCountPerMonth[t.Month().String()] += 1
+			a.PostsPerHour[t.Hour()] += 1
 			a.addDateCount(t)
 			if fromID, ok := mm.FwdFrom.GetFromID(); ok {
 				if ch, ok := fromID.(*tg.PeerChannel); ok {
