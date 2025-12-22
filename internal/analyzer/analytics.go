@@ -7,46 +7,46 @@ import (
 )
 
 type Analytics struct {
-	ChannelName             string           `json:"channel_name,omitempty"`
-	TotalViews              int              `json:"total_views,omitempty"`
-	TotalComments           int              `json:"total_comments,omitempty"`
-	TotalReactions          int              `json:"total_reactions,omitempty"`
-	TotalPosts              int              `json:"total_posts,omitempty"`
-	TotalForwarded          int              `json:"total_forwarded,omitempty"`
-	MonthlyView             map[string]int   `json:"monthly_view,omitempty"`
-	ReactionCounter         map[string]int   `json:"reaction_counter,omitempty"`
-	PostCountPerday         map[string][]int `json:"post_count_perday,omitempty"`
-	PostCountPerMonth       map[string]int   `json:"post_count_per_month,omitempty"`
-	PopularPostID           int              `json:"popular_post_id,omitempty"`
-	PopularPostViewCount    int              `json:"popular_post_view_count,omitempty"`
-	PopularPostByCommentID  int              `json:"popular_post_by_comment_id,omitempty"`
-	PopularPostCommentCount int              `json:"popular_post_comment_count,omitempty"`
-	PostsPerHour            map[int]int      `json:"posts_per_hour,omitempty"`
-	ForwardCount            map[int]int      `json:"forward_count,omitempty"`
-	LongestStreak           int              `json:"longest_streak,omitempty"`
-	visited                 map[int]struct{}
+	ChannelName            string           `json:"channel_name,omitempty"`
+	TotalViews             int              `json:"total_views,omitempty"`
+	TotalComments          int              `json:"total_comments,omitempty"`
+	TotalReactions         int              `json:"total_reactions,omitempty"`
+	TotalPosts             int              `json:"total_posts,omitempty"`
+	TotalForwards          int              `json:"total_forwards,omitempty"`
+	ViewsByMonth           map[string]int   `json:"views_by_month,omitempty"`
+	ReactionsByType        map[string]int   `json:"reactions_by_type,omitempty"`
+	PostsByHour            map[int]int      `json:"posts_by_hour,omitempty"`
+	PostsByDay             map[string][]int `json:"posts_by_day,omitempty"`
+	PostsByMonth           map[string]int   `json:"posts_by_month,omitempty"`
+	MostViewedPostID       int              `json:"most_viewed_post_id,omitempty"`
+	MostViewedPostCount    int              `json:"most_viewed_post_count,omitempty"`
+	MostCommentedPostID    int              `json:"most_commented_post_id,omitempty"`
+	MostCommentedPostCount int              `json:"most_commented_post_count,omitempty"`
+	ForwardsFromCount      map[int]int      `json:"forwards_from_count,omitempty"`
+	LongestPostingStreak   int              `json:"longest_posting_streak,omitempty"`
+	visited                map[int]struct{}
 }
 
 func NewAnalytics(name string) Analytics {
 	var a Analytics
 	a.ChannelName = name
-	a.MonthlyView = make(map[string]int)
-	a.ReactionCounter = make(map[string]int)
-	a.PostCountPerday = make(map[string][]int)
-	a.PostCountPerMonth = make(map[string]int)
-	a.ForwardCount = make(map[int]int)
+	a.ViewsByMonth = make(map[string]int)
+	a.ReactionsByType = make(map[string]int)
+	a.PostsByDay = make(map[string][]int)
+	a.PostsByMonth = make(map[string]int)
+	a.ForwardsFromCount = make(map[int]int)
 	a.visited = make(map[int]struct{})
-	a.PostsPerHour = make(map[int]int)
+	a.PostsByHour = make(map[int]int)
 	return a
 }
 func (a *Analytics) addDateCount(date time.Time) {
 	month := date.Month().String()
 	t := time.Date(date.Year(), date.Month()+1, 1, 0, 0, 0, 0, time.UTC)
 	lastDay := t.AddDate(0, 0, -1)
-	if len(a.PostCountPerday[month]) == 0 {
-		a.PostCountPerday[month] = make([]int, lastDay.Day())
+	if len(a.PostsByDay[month]) == 0 {
+		a.PostsByDay[month] = make([]int, lastDay.Day())
 	}
-	a.PostCountPerday[month][date.Day()-1] += 1
+	a.PostsByDay[month][date.Day()-1] += 1
 }
 func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int {
 	offSet := 0
@@ -56,30 +56,30 @@ func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int
 			if _, ok := a.visited[mm.ID]; ok {
 				continue
 			}
-			if a.PopularPostID == 0 || a.PopularPostViewCount < mm.Views {
-				a.PopularPostID = mm.ID
-				a.PopularPostViewCount = mm.Views
+			if a.MostViewedPostID == 0 || a.MostViewedPostCount < mm.Views {
+				a.MostViewedPostID = mm.ID
+				a.MostViewedPostCount = mm.Views
 			}
-			if a.PopularPostByCommentID == 0 || a.PopularPostCommentCount < mm.Replies.Replies {
-				a.PopularPostByCommentID = mm.ID
-				a.PopularPostCommentCount = mm.Replies.Replies
+			if a.MostCommentedPostID == 0 || a.MostCommentedPostCount < mm.Replies.Replies {
+				a.MostCommentedPostID = mm.ID
+				a.MostCommentedPostCount = mm.Replies.Replies
 			}
 			offSet = mm.Date
 			a.TotalViews += mm.Views
 			a.TotalComments += mm.Replies.Replies
 			t := getDateTime(mm.Date)
-			a.MonthlyView[t.Month().String()] += mm.Views
+			a.ViewsByMonth[t.Month().String()] += mm.Views
 			reactionCounter, totalReactions := (countNumOfReactions(mm.Reactions))
-			a.ReactionCounter = mergeMaps(a.ReactionCounter, reactionCounter)
+			a.ReactionsByType = mergeMaps(a.ReactionsByType, reactionCounter)
 			a.TotalReactions += totalReactions
-			a.PostCountPerMonth[t.Month().String()] += 1
-			a.PostsPerHour[t.Hour()] += 1
+			a.PostsByMonth[t.Month().String()] += 1
+			a.PostsByHour[t.Hour()] += 1
 			a.addDateCount(t)
 			if fromID, ok := mm.FwdFrom.GetFromID(); ok {
 				if ch, ok := fromID.(*tg.PeerChannel); ok {
-					a.ForwardCount[int(ch.ChannelID)] += 1
+					a.ForwardsFromCount[int(ch.ChannelID)] += 1
 				}
-				a.TotalForwarded += 1
+				a.TotalForwards += 1
 			}
 			last = mm
 		}
@@ -89,7 +89,7 @@ func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int
 }
 func (a *Analytics) GetLongestStreak() {
 	array := make([]int, 0)
-	for _, m := range a.PostCountPerday {
+	for _, m := range a.PostsByDay {
 		array = append(array, m...)
 	}
 	current := 0
@@ -105,5 +105,5 @@ func (a *Analytics) GetLongestStreak() {
 		current = max(current, right-left)
 		left = right
 	}
-	a.LongestStreak = current
+	a.LongestPostingStreak = current
 }
