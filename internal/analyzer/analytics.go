@@ -100,12 +100,17 @@ func NewAnalytics(name string) Analytics {
 }
 func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int {
 	offSet := 0
+	startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	minDateUnix := int(startDate.Unix())
 	for i, msg := range m.Messages {
 		mm, ok := msg.(*tg.Message)
 		if !ok || i == 0 {
 			continue
 		}
 		offSet = mm.Date
+		if mm.Date <= minDateUnix {
+			return minDateUnix
+		}
 		a.Highlights.UpdateTopPosts(mm)
 		a.Totals.UpdateMetrics(mm)
 		a.Trends.UpdateTrends(mm)

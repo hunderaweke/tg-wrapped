@@ -87,7 +87,7 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			}
 			m, _ := res.(*tg.MessagesChannelMessages)
 			offSet = a.updateFromChannelMessages(m)
-			// time.Sleep(1 * time.Second)
+			time.Sleep(1 * time.Millisecond)
 		}
 		return nil
 	}); err != nil {
