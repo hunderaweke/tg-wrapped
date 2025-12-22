@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gotd/td/telegram"
@@ -68,27 +69,74 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			return err
 		}
 		api := ar.client.API()
-		startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-		minDateUnix := int(startDate.Unix())
-		currentDate := int(time.Now().Unix())
-		offsetID := 0
-		offSet := currentDate
-		limit := 100
-		for offSet >= minDateUnix {
-			peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
-			res, err := api.MessagesGetHistory(context.Background(), &tg.MessagesGetHistoryRequest{
-				Peer:       peer,
-				OffsetDate: offSet,
-				OffsetID:   offsetID,
-				Limit:      limit,
-			})
-			if err != nil {
-				return fmt.Errorf("history: %w. If you see BOT_METHOD_INVALID, delete old bot session and re-auth as a user (remove user_session.json)", err)
+		peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
+		type result struct {
+			msg *tg.MessagesChannelMessages
+			err error
+		}
+		currentDiff := 0
+		now := time.Now()
+
+		resultStream := make(chan result)
+		go func() {
+			done := make(chan int)
+			defer close(done)
+			defer close(resultStream)
+			startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+			minDateUnix := int(startDate.Unix())
+			finished := false
+			curr := 1
+			for !finished {
+				var wg sync.WaitGroup
+				for range 30 {
+					wg.Add(1)
+					go func(offSet int, done <-chan int) {
+						var r result
+						defer wg.Done()
+						duration := time.Duration(offSet) * time.Hour
+						t := int(now.Add(-duration).Unix())
+						if t < minDateUnix {
+							finished = true
+						}
+						for {
+							res, err := api.MessagesGetHistory(context.Background(), &tg.MessagesGetHistoryRequest{
+								Peer:       peer,
+								OffsetDate: t,
+							})
+							if err != nil {
+								r.err = fmt.Errorf("fetching history error: %w", err)
+								time.Sleep(20 * time.Millisecond)
+								continue
+							}
+							m, _ := res.(*tg.MessagesChannelMessages)
+							r.msg = m
+							break
+						}
+						select {
+						case resultStream <- r:
+						case <-done:
+							return
+						}
+
+					}(currentDiff, done)
+					currentDiff += 36
+					time.Sleep(20 * time.Millisecond)
+				}
+				fmt.Println("Current : ", curr)
+				wg.Wait()
+				if finished {
+					break
+				}
+				curr += 1
+				time.Sleep(1 * time.Second)
 			}
-			m, _ := res.(*tg.MessagesChannelMessages)
-			offSet = a.updateFromChannelMessages(m)
-			// *Important: need to deal with the rate limiter
-			time.Sleep(1 * time.Second)
+		}()
+		for r := range resultStream {
+			if r.err != nil {
+				log.Println(r.err)
+				continue
+			}
+			a.updateFromChannelMessages(r.msg)
 		}
 		return nil
 	}); err != nil {
