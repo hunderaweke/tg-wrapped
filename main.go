@@ -10,7 +10,7 @@ import (
 
 func main() {
 	a := analyzer.NewAnalyzer()
-	analytics, err := a.ProcessAnalytics("dagmawi_babi")
+	analytics, err := a.ProcessAnalytics("codative")
 	if err != nil {
 		log.Fatal(err)
 	}

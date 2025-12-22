@@ -23,6 +23,7 @@ type Analytics struct {
 	PopularPostCommentCount int              `json:"popular_post_comment_count,omitempty"`
 	ForwardCount            map[int]int      `json:"forward_count,omitempty"`
 	LongestStreak           int              `json:"longest_streak,omitempty"`
+	visited                 map[int]struct{}
 }
 
 func NewAnalytics(name string) Analytics {
@@ -33,6 +34,7 @@ func NewAnalytics(name string) Analytics {
 	a.PostCountPerday = make(map[string][]int)
 	a.PostCountPerMonth = make(map[string]int)
 	a.ForwardCount = make(map[int]int)
+	a.visited = make(map[int]struct{})
 	return a
 }
 func (a *Analytics) addDateCount(date time.Time) {
@@ -46,8 +48,12 @@ func (a *Analytics) addDateCount(date time.Time) {
 }
 func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int {
 	offSet := 0
+	last := &tg.Message{}
 	for _, msg := range m.Messages {
 		if mm, ok := msg.(*tg.Message); ok {
+			if _, ok := a.visited[mm.ID]; ok {
+				continue
+			}
 			if a.PopularPostID == 0 || a.PopularPostViewCount < mm.Views {
 				a.PopularPostID = mm.ID
 				a.PopularPostViewCount = mm.Views
@@ -72,8 +78,10 @@ func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int
 				}
 				a.TotalForwarded += 1
 			}
+			last = mm
 		}
 	}
+	a.visited[last.ID] = struct{}{}
 	return offSet
 }
 func (a *Analytics) GetLongestStreak() {
