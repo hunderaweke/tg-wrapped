@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gotd/td/tg"
@@ -19,6 +20,7 @@ func (m *OverallMetrics) UpdateMetrics(msg *tg.Message) {
 	m.TotalViews += msg.Views
 	m.TotalReactions += totalReactions
 	m.TotalComments += msg.Replies.Replies
+	m.TotalPosts += 1
 	_, ok := msg.FwdFrom.GetFromID()
 	if !ok {
 		return
@@ -36,16 +38,17 @@ type TimeTrends struct {
 
 func (t *TimeTrends) UpdateTrends(mm *tg.Message) {
 	dateTime := getDateTime(mm.Date)
-	t.ViewsByMonth[dateTime.Month().String()] += mm.Views
-	t.PostsByMonth[dateTime.Month().String()] += 1
-	t.PostsByHour[dateTime.Hour()] += 1
 	month := dateTime.Month().String()
+	monthKey := fmt.Sprintf("%d-%s", dateTime.Year(), month)
+	t.PostsByMonth[monthKey] += 1
+	t.ViewsByMonth[monthKey] += mm.Views
+	t.PostsByHour[dateTime.Hour()] += 1
 	tt := time.Date(dateTime.Year(), dateTime.Month()+1, 1, 0, 0, 0, 0, time.UTC)
-	lastDay := tt.AddDate(0, 0, -1)
-	if len(t.PostsByDay[month]) == 0 {
-		t.PostsByDay[month] = make([]int, lastDay.Day())
+	if len(t.PostsByDay[monthKey]) == 0 {
+		lastDay := tt.AddDate(0, 0, -1)
+		t.PostsByDay[monthKey] = make([]int, lastDay.Day())
 	}
-	t.PostsByDay[month][dateTime.Day()-1] += 1
+	t.PostsByDay[monthKey][dateTime.Day()-1] += 1
 }
 
 type TopPosts struct {
