@@ -22,6 +22,7 @@ type Analytics struct {
 	PopularPostByCommentID  int              `json:"popular_post_by_comment_id,omitempty"`
 	PopularPostCommentCount int              `json:"popular_post_comment_count,omitempty"`
 	ForwardCount            map[int]int      `json:"forward_count,omitempty"`
+	LongestStreak           int              `json:"longest_streak,omitempty"`
 }
 
 func NewAnalytics(name string) Analytics {
@@ -74,4 +75,24 @@ func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int
 		}
 	}
 	return offSet
+}
+func (a *Analytics) GetLongestStreak() {
+	array := make([]int, 0)
+	for _, m := range a.PostCountPerday {
+		array = append(array, m...)
+	}
+	current := 0
+	left := 0
+	for left < len(array) {
+		for left < len(array) && array[left] == 0 {
+			left += 1
+		}
+		right := left
+		for right < len(array) && array[right] != 0 {
+			right += 1
+		}
+		current = max(current, right-left)
+		left = right
+	}
+	a.LongestStreak = current
 }

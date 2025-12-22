@@ -88,11 +88,12 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			m, _ := res.(*tg.MessagesChannelMessages)
 			offSet = a.updateFromChannelMessages(m)
 			// *Important: need to deal with the rate limiter
-			time.Sleep(3 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
+	a.GetLongestStreak()
 	return &a, nil
 }
