@@ -74,7 +74,9 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 		offsetID := 0
 		offSet := currentDate
 		limit := 100
+		currentLoop := 1
 		for offSet > minDateUnix {
+			log.Println("Current loop: ", currentLoop)
 			peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
 			res, err := api.MessagesGetHistory(context.Background(), &tg.MessagesGetHistoryRequest{
 				Peer:       peer,
@@ -83,11 +85,11 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 				Limit:      limit,
 			})
 			if err != nil {
-				return fmt.Errorf("history: %w. If you see BOT_METHOD_INVALID, delete old bot session and re-auth as a user (remove user_session.json)", err)
+				continue
 			}
 			m, _ := res.(*tg.MessagesChannelMessages)
 			offSet = a.updateFromChannelMessages(m)
-			time.Sleep(1 * time.Second)
+			currentLoop += 1
 		}
 		return nil
 	}); err != nil {
