@@ -74,7 +74,7 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 		offsetID := 0
 		offSet := currentDate
 		limit := 100
-		for offSet >= minDateUnix {
+		for offSet > minDateUnix {
 			peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
 			res, err := api.MessagesGetHistory(context.Background(), &tg.MessagesGetHistoryRequest{
 				Peer:       peer,
@@ -87,7 +87,7 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			}
 			m, _ := res.(*tg.MessagesChannelMessages)
 			offSet = a.updateFromChannelMessages(m)
-			time.Sleep(1 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 		}
 		return nil
 	}); err != nil {
