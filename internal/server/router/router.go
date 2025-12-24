@@ -10,6 +10,7 @@ import (
 
 func Run() error {
 	http.HandleFunc("/health", controller.HealthHandler)
+	http.HandleFunc("/analytics", controller.AnalyticsHandler)
 	fmt.Println("Listening on port: ", os.Getenv("SERVER_PORT"))
 	return http.ListenAndServe(":"+os.Getenv("SERVER_PORT"), nil)
 }
