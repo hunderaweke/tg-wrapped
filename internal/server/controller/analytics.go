@@ -1,13 +1,11 @@
 package controller
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/hunderaweke/tg-unwrapped/internal/analyzer"
 	"github.com/hunderaweke/tg-unwrapped/internal/storage"
 )
@@ -16,14 +14,11 @@ type AnalyticsRequest struct {
 	Username string `json:"username,omitempty"`
 }
 
-func AnalyticsHandler(w http.ResponseWriter, r *http.Request) {
+func AnalyticsHandler(ctx *gin.Context) {
 	var anaReq AnalyticsRequest
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-	if err := json.Unmarshal(data, &anaReq); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if err := ctx.ShouldBind(&anaReq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 	var analytics *analyzer.Analytics
 	redisService, err := storage.NewRedis()
@@ -45,6 +40,5 @@ func AnalyticsHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 	}
-	data, err = json.Marshal(&analytics)
-	fmt.Fprint(w, string(data))
+	ctx.JSON(http.StatusOK, analytics)
 }

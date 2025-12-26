@@ -63,10 +63,10 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 	var a Analytics
 	if err := ar.client.Run(context.Background(), func(ctx context.Context) error {
 		channel, err := ar.GetChannel(username)
-		a = NewAnalytics(channel.Title)
 		if err != nil {
 			return err
 		}
+		a = NewAnalytics(channel.Title)
 		api := ar.client.API()
 		startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 		minDateUnix := int(startDate.Unix())
@@ -87,7 +87,12 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			if err != nil {
 				continue
 			}
-			m, _ := res.(*tg.MessagesChannelMessages)
+			m, ok := res.(*tg.MessagesChannelMessages)
+			if !ok || m == nil {
+				log.Printf("unexpected history response type: %T", res)
+				offSet = minDateUnix
+				continue
+			}
 			offSet = a.updateFromChannelMessages(m)
 			currentLoop += 1
 		}

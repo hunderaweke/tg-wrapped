@@ -1,13 +1,11 @@
 package controller
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-func HealthHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	data, _ := json.Marshal(map[string]string{"health": "ok"})
-	fmt.Fprint(w, string(data))
+func HealthHandler(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, gin.H{"health": "OK"})
 }

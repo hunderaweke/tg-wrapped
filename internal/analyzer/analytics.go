@@ -99,6 +99,9 @@ func NewAnalytics(name string) Analytics {
 	return a
 }
 func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int {
+	if m == nil {
+		return 0
+	}
 	offSet := 0
 	startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	minDateUnix := int(startDate.Unix())

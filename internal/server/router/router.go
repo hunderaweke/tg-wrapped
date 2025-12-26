@@ -1,16 +1,17 @@
 package router
 
 import (
-	"fmt"
-	"net/http"
 	"os"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"github.com/hunderaweke/tg-unwrapped/internal/server/controller"
 )
 
 func Run() error {
-	http.HandleFunc("/health", controller.HealthHandler)
-	http.HandleFunc("/analytics", controller.AnalyticsHandler)
-	fmt.Println("Listening on port: ", os.Getenv("SERVER_PORT"))
-	return http.ListenAndServe(":"+os.Getenv("SERVER_PORT"), nil)
+	router := gin.Default()
+	router.Use(cors.Default())
+	router.GET("/health", controller.HealthHandler)
+	router.POST("/analytics", controller.AnalyticsHandler)
+	return router.Run(":" + os.Getenv("SERVER_PORT"))
 }
