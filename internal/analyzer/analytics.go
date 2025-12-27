@@ -81,10 +81,11 @@ func (tp *TopPosts) UpdateTopPosts(msg *tg.Message) {
 }
 
 type Analytics struct {
-	ChannelName string         `json:"channel_name"`
-	Totals      OverallMetrics `json:"totals"`
-	Trends      TimeTrends     `json:"trends"`
-	Highlights  TopPosts       `json:"highlights"`
+	ChannelProfile string         `json:"channel_profile"`
+	ChannelName    string         `json:"channel_name"`
+	Totals         OverallMetrics `json:"totals"`
+	Trends         TimeTrends     `json:"trends"`
+	Highlights     TopPosts       `json:"highlights"`
 }
 
 func NewAnalytics(name string) Analytics {

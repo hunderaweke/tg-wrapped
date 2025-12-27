@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"mime"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -15,12 +17,14 @@ import (
 	"github.com/gotd/td/telegram/downloader"
 	"github.com/gotd/td/tg"
 	localAuth "github.com/hunderaweke/tg-unwrapped/internal/auth"
+	"github.com/hunderaweke/tg-unwrapped/internal/storage"
 	_ "github.com/joho/godotenv/autoload"
 )
 
 type Analyzer struct {
 	authenticator localAuth.TermAuth
 	client        *telegram.Client
+	minioClient   *storage.MinioClient
 }
 
 func NewAnalyzer() Analyzer {
@@ -35,7 +39,12 @@ func NewAnalyzer() Analyzer {
 		SessionStorage: &telegram.FileSessionStorage{Path: os.Getenv("APP_SESSION_STORAGE")},
 	})
 	authenticator := localAuth.NewTermAuth(bufio.NewReader(os.Stdin))
-	return Analyzer{client: client, authenticator: authenticator}
+	minioBucket := os.Getenv("MINIO_BUCKET")
+	minioClient, err := storage.NewMinioBucket(minioBucket)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return Analyzer{client: client, authenticator: authenticator, minioClient: minioClient}
 }
 
 func (a *Analyzer) GetChannel(username string) (*tg.Channel, error) {
@@ -80,8 +89,17 @@ func (ar *Analyzer) DownloadProfile(c *tg.Channel) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error downloading the image: %w", err)
 	}
-	os.WriteFile("profile.jpg", buf.Bytes(), 0644)
-	return "profile.jpg", nil
+	contentType := http.DetectContentType(buf.Bytes())
+	fileExtensions, err := mime.ExtensionsByType(contentType)
+	if err != nil || len(fileExtensions) == 0 {
+		fileExtensions = []string{".jpg"}
+	}
+	fileName := fmt.Sprintf("%d%s", c.ID, fileExtensions[0])
+	err = ar.minioClient.UploadProfile(fileName, buf, contentType)
+	if err != nil {
+		return "", fmt.Errorf("error uploading profile to minio: %w", err)
+	}
+	return fmt.Sprintf("/profiles/%s", fileName), nil
 }
 func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 	var a Analytics
@@ -90,8 +108,12 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 		if err != nil {
 			return err
 		}
-		ar.DownloadProfile(channel)
+		profileAddress, err := ar.DownloadProfile(channel)
+		if err != nil {
+			return err
+		}
 		a = NewAnalytics(channel.Title)
+		a.ChannelProfile = profileAddress
 		api := ar.client.API()
 		startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 		minDateUnix := int(startDate.Unix())
