@@ -27,7 +27,7 @@ type Analyzer struct {
 	minioClient   *storage.MinioClient
 }
 
-func NewAnalyzer() Analyzer {
+func NewAnalyzer(minioClient *storage.MinioClient) Analyzer {
 	var appHash string
 	var appID int
 	appHash = os.Getenv("APP_HASH")
@@ -39,11 +39,6 @@ func NewAnalyzer() Analyzer {
 		SessionStorage: &telegram.FileSessionStorage{Path: os.Getenv("APP_SESSION_STORAGE")},
 	})
 	authenticator := localAuth.NewTermAuth(bufio.NewReader(os.Stdin))
-	minioBucket := os.Getenv("MINIO_BUCKET")
-	minioClient, err := storage.NewMinioBucket(minioBucket)
-	if err != nil {
-		log.Fatal(err)
-	}
 	return Analyzer{client: client, authenticator: authenticator, minioClient: minioClient}
 }
 
