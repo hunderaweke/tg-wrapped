@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth"
+	"github.com/gotd/td/telegram/downloader"
 	"github.com/gotd/td/tg"
 	localAuth "github.com/hunderaweke/tg-unwrapped/internal/auth"
 	_ "github.com/joho/godotenv/autoload"
@@ -58,7 +60,29 @@ func (a *Analyzer) GetChannel(username string) (*tg.Channel, error) {
 	}
 	return c, nil
 }
-
+func (ar *Analyzer) DownloadProfile(c *tg.Channel) (string, error) {
+	chatPhoto, ok := c.GetPhoto().(*tg.ChatPhoto)
+	if !ok {
+		return "", fmt.Errorf("error converting the photo")
+	}
+	location := &tg.InputPeerPhotoFileLocation{
+		Peer: &tg.InputPeerChannel{
+			AccessHash: c.AccessHash,
+			ChannelID:  c.ID,
+		},
+		PhotoID: chatPhoto.PhotoID,
+		Big:     true,
+	}
+	d := downloader.NewDownloader()
+	var buf bytes.Buffer
+	b := d.Download(ar.client.API(), location)
+	_, err := b.Stream(context.Background(), &buf)
+	if err != nil {
+		return "", fmt.Errorf("error downloading the image: %w", err)
+	}
+	os.WriteFile("profile.jpg", buf.Bytes(), 0644)
+	return "profile.jpg", nil
+}
 func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 	var a Analytics
 	if err := ar.client.Run(context.Background(), func(ctx context.Context) error {
@@ -66,6 +90,7 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 		if err != nil {
 			return err
 		}
+		ar.DownloadProfile(channel)
 		a = NewAnalytics(channel.Title)
 		api := ar.client.API()
 		startDate := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -76,7 +101,6 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 		limit := 100
 		currentLoop := 1
 		for offSet > minDateUnix {
-			log.Println("Current loop: ", currentLoop)
 			peer := &tg.InputPeerChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
 			res, err := api.MessagesGetHistory(context.Background(), &tg.MessagesGetHistoryRequest{
 				Peer:       peer,

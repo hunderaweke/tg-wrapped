@@ -3,7 +3,6 @@ package controller
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hunderaweke/tg-unwrapped/internal/analyzer"
@@ -35,10 +34,10 @@ func AnalyticsHandler(ctx *gin.Context) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = redisService.Set(anaReq.Username, analytics, 48*time.Hour)
-		if err != nil {
-			log.Fatal(err)
-		}
+		// err = redisService.Set(anaReq.Username, analytics, 48*time.Hour)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
 	}
 	ctx.JSON(http.StatusOK, analytics)
 }
