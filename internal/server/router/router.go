@@ -16,14 +16,28 @@ import (
 func Run() error {
 	// Initialize logger based on environment
 	env := os.Getenv("ENV")
-	if env == "production" {
-		logger.Init(slog.LevelInfo, true)
-		gin.SetMode(gin.ReleaseMode)
-	} else {
-		logger.Init(slog.LevelDebug, false)
+	logDir := os.Getenv("LOG_DIR")
+	if logDir == "" {
+		logDir = "logs"
 	}
 
-	logger.Info("Starting TG-Wrapped server", "env", env)
+	if env == "production" {
+		if err := logger.InitWithFile(slog.LevelInfo, true, logDir); err != nil {
+			// Fall back to stdout only if file logging fails
+			logger.Init(slog.LevelInfo, true)
+			logger.Warn("Failed to initialize file logging, using stdout only", "error", err)
+		}
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		if err := logger.InitWithFile(slog.LevelDebug, false, logDir); err != nil {
+			// Fall back to stdout only if file logging fails
+			logger.Init(slog.LevelDebug, false)
+			logger.Warn("Failed to initialize file logging, using stdout only", "error", err)
+		}
+	}
+	defer logger.Close()
+
+	logger.Info("Starting TG-Wrapped server", "env", env, "log_dir", logDir)
 
 	redisService, err := storage.NewRedis()
 	if err != nil {

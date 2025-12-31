@@ -30,11 +30,6 @@ const (
 	defaultFileExtension = ".jpg"
 )
 
-// contains checks if a string contains a substring (case-insensitive)
-func contains(s, substr string) bool {
-	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
-}
-
 type Analyzer struct {
 	authenticator localAuth.TermAuth
 	client        *telegram.Client
