@@ -58,15 +58,35 @@ func (t *TimeTrends) UpdateTrends(mm *tg.Message) {
 	t.PostsByDay[monthKey][dateTime.Day()-1] += 1
 }
 
+type ForwardSource struct {
+	Name          string `json:"name"`
+	Username      string `json:"username"`
+	ForwardsCount int    `json:"forwards_count"`
+	Profile       string `json:"profile"`
+}
 type TopPosts struct {
-	MostViewedID       int            `json:"most_viewed_id"`
-	MostViewed         Message        `json:"most_viewed"`
-	MostCommented      Message        `json:"most_commented"`
-	MostViewedCount    int            `json:"most_viewed_count"`
-	MostCommentedID    int            `json:"most_commented_id"`
-	MostCommentedCount int            `json:"most_commented_count"`
-	ForwardsBySource   map[int]int    `json:"forwards_by_post"`
-	ReactionsByType    map[string]int `json:"reactions_by_type"`
+	MostViewedID         int            `json:"most_viewed_id"`
+	MostViewed           Message        `json:"most_viewed"`
+	MostCommented        Message        `json:"most_commented"`
+	MostViewedCount      int            `json:"most_viewed_count"`
+	MostCommentedID      int            `json:"most_commented_id"`
+	MostCommentedCount   int            `json:"most_commented_count"`
+	ForwardsBySource     map[int]int    `json:"-"`
+	MostForwardedSource  ForwardSource  `json:"most_forwarded_source"`
+	MostForwardedChannel *tg.Channel    `json:"-"`
+	ReactionsByType      map[string]int `json:"reactions_by_type"`
+}
+
+func (tp *TopPosts) GetMostForwardsSource() int {
+	ans := 0
+	currMax := 0
+	for id, cnt := range tp.ForwardsBySource {
+		if cnt > currMax {
+			ans = id
+			currMax = cnt
+		}
+	}
+	return ans
 }
 
 func (tp *TopPosts) UpdateTopPosts(msg *tg.Message) {
@@ -86,6 +106,27 @@ func (tp *TopPosts) UpdateTopPosts(msg *tg.Message) {
 	}
 	if ch, ok := fromID.(*tg.PeerChannel); ok {
 		tp.ForwardsBySource[int(ch.ChannelID)] += 1
+	}
+}
+
+func (tp *TopPosts) GetMostForwardedFromChannel(chats []tg.ChatClass, channelID int) {
+	for _, chat := range chats {
+		channel, ok := chat.(*tg.Channel)
+		if !ok {
+			continue
+		}
+		_, exists := tp.ForwardsBySource[int(channel.ID)]
+		if !exists {
+			continue
+		}
+		if channel.ID == int64(channelID) {
+			tp.MostForwardedSource = ForwardSource{
+				Name:          channel.Title,
+				Username:      channel.Username,
+				ForwardsCount: tp.ForwardsBySource[channelID],
+			}
+			tp.MostForwardedChannel = channel
+		}
 	}
 }
 
@@ -128,6 +169,8 @@ func (a *Analytics) updateFromChannelMessages(m *tg.MessagesChannelMessages) int
 		a.Totals.UpdateMetrics(mm)
 		a.Trends.UpdateTrends(mm)
 	}
+	channelID := a.Highlights.GetMostForwardsSource()
+	a.Highlights.GetMostForwardedFromChannel(m.Chats, channelID)
 	return offSet
 }
 func (a *Analytics) GetLongestStreak() {

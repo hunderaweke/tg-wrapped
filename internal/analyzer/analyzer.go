@@ -141,7 +141,7 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			Channel: channel.AsInput(),
 			ID:      []tg.InputMessageClass{&tg.InputMessageID{ID: a.Highlights.MostViewedID}},
 		}
-		msg, err := api.ChannelsGetMessages(context.Background(), req)
+		msg, err := api.ChannelsGetMessages(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -158,7 +158,7 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			Channel: channel.AsInput(),
 			ID:      []tg.InputMessageClass{&tg.InputMessageID{ID: a.Highlights.MostCommentedID}},
 		}
-		msg, err = api.ChannelsGetMessages(context.Background(), req)
+		msg, err = api.ChannelsGetMessages(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -171,6 +171,11 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			Views:    mostCommentedMsg.Views,
 			Comments: mostCommentedMsg.Replies.Replies,
 		}
+		profileUrl, err := ar.DownloadProfile(a.Highlights.MostForwardedChannel)
+		if err != nil {
+			return err
+		}
+		a.Highlights.MostForwardedSource.Profile = profileUrl
 		return nil
 	}); err != nil {
 		return nil, err
