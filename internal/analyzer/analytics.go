@@ -7,6 +7,13 @@ import (
 	"github.com/gotd/td/tg"
 )
 
+type Message struct {
+	Text     string    `json:"text"`
+	Views    int       `json:"views"`
+	Comments int       `json:"comments"`
+	Date     time.Time `json:"date"`
+}
+
 type OverallMetrics struct {
 	TotalViews     int `json:"total_views"`
 	TotalComments  int `json:"total_comments"`
@@ -29,11 +36,11 @@ func (m *OverallMetrics) UpdateMetrics(msg *tg.Message) {
 }
 
 type TimeTrends struct {
-	ViewsByMonth         map[string]int   `json:"views_by_month,omitempty"`
-	PostsByDay           map[string][]int `json:"posts_by_day,omitempty"`
-	PostsByMonth         map[string]int   `json:"posts_by_month,omitempty"`
-	PostsByHour          map[int]int      `json:"posts_by_hour,omitempty"`
-	LongestPostingStreak int              `json:"longest_posting_streak,omitempty"`
+	ViewsByMonth         map[string]int   `json:"views_by_month"`
+	PostsByDay           map[string][]int `json:"posts_by_day"`
+	PostsByMonth         map[string]int   `json:"posts_by_month"`
+	PostsByHour          map[int]int      `json:"posts_by_hour"`
+	LongestPostingStreak int              `json:"longest_posting_streak"`
 }
 
 func (t *TimeTrends) UpdateTrends(mm *tg.Message) {
@@ -53,6 +60,8 @@ func (t *TimeTrends) UpdateTrends(mm *tg.Message) {
 
 type TopPosts struct {
 	MostViewedID       int            `json:"most_viewed_id"`
+	MostViewed         Message        `json:"most_viewed"`
+	MostCommented      Message        `json:"most_commented"`
 	MostViewedCount    int            `json:"most_viewed_count"`
 	MostCommentedID    int            `json:"most_commented_id"`
 	MostCommentedCount int            `json:"most_commented_count"`

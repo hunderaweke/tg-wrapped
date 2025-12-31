@@ -17,7 +17,7 @@ type AnalyticsRequest struct {
 func AnalyticsHandler(redisService *storage.RedisService, minioClient *storage.MinioClient) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var anaReq AnalyticsRequest
-		if err := ctx.ShouldBind(&anaReq); err != nil {
+		if err := ctx.ShouldBindJSON(&anaReq); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

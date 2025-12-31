@@ -130,12 +130,46 @@ func (ar *Analyzer) ProcessAnalytics(username string) (*Analytics, error) {
 			}
 			m, ok := res.(*tg.MessagesChannelMessages)
 			if !ok || m == nil {
-				log.Printf("unexpected history response type: %T", res)
 				offSet = minDateUnix
 				continue
 			}
 			offSet = a.updateFromChannelMessages(m)
+			log.Println("Current loop: ", currentLoop)
 			currentLoop += 1
+		}
+		req := &tg.ChannelsGetMessagesRequest{
+			Channel: channel.AsInput(),
+			ID:      []tg.InputMessageClass{&tg.InputMessageID{ID: a.Highlights.MostViewedID}},
+		}
+		msg, err := api.ChannelsGetMessages(context.Background(), req)
+		if err != nil {
+			return err
+		}
+		channelMsg := msg.(*tg.MessagesChannelMessages)
+		msgs := channelMsg.Messages
+		mostViewedMsg := msgs[0].(*tg.Message)
+		a.Highlights.MostViewed = Message{
+			Text:     mostViewedMsg.Message,
+			Date:     getDateTime(mostViewedMsg.Date),
+			Views:    mostViewedMsg.Views,
+			Comments: mostViewedMsg.Replies.Replies,
+		}
+		req = &tg.ChannelsGetMessagesRequest{
+			Channel: channel.AsInput(),
+			ID:      []tg.InputMessageClass{&tg.InputMessageID{ID: a.Highlights.MostCommentedID}},
+		}
+		msg, err = api.ChannelsGetMessages(context.Background(), req)
+		if err != nil {
+			return err
+		}
+		channelMsg = msg.(*tg.MessagesChannelMessages)
+		msgs = channelMsg.Messages
+		mostCommentedMsg := msgs[0].(*tg.Message)
+		a.Highlights.MostCommented = Message{
+			Text:     mostCommentedMsg.Message,
+			Date:     getDateTime(mostCommentedMsg.Date),
+			Views:    mostCommentedMsg.Views,
+			Comments: mostCommentedMsg.Replies.Replies,
 		}
 		return nil
 	}); err != nil {
